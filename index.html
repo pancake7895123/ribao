@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>工程计划识别 · 截图转纯文本</title>
+  <style>
+    :root {
+      --ink: #181611;
+      --ink-soft: #5d594f;
+      --muted: #8b8578;
+      --paper: #f3efe5;
+      --card: #fffdf8;
+      --line: #dcd5c6;
+      --line-dark: #c8bfae;
+      --accent: #ed5a2b;
+      --accent-deep: #c84218;
+      --accent-wash: #fff0e9;
+      --green: #26734d;
+      --red: #b93625;
+      --shadow: 0 28px 70px rgba(45, 37, 20, 0.10), 0 3px 12px rgba(45, 37, 20, 0.04);
+      --radius-xl: 28px;
+      --radius-lg: 18px;
+      --radius-md: 13px;
+      --sans: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at 7% 5%, rgba(237, 90, 43, 0.11), transparent 28rem),
+        radial-gradient(circle at 94% 22%, rgba(38, 115, 77, 0.07), transparent 25rem),
+        linear-gradient(rgba(24, 22, 17, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(24, 22, 17, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 34px 34px, 34px 34px, auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, textarea, input { font: inherit; }
+    button { color: inherit; }
+
+    ::selection { background: rgba(237, 90, 43, 0.22); }
+
+    .page {
+      width: min(1120px, calc(100% - 44px));
+      margin: 0 auto;
+      padding: 28px 0 38px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 64px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--ink);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .brand-mark svg { width: 18px; height: 18px; }
+
+    .top-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink-soft);
+      background: rgba(255, 253, 248, 0.7);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      backdrop-filter: blur(8px);
+    }
+
+    .top-meta::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(38, 115, 77, 0.12);
+    }
+
+    .hero {
+      max-width: 800px;
+      margin-bottom: 36px;
+      animation: rise-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .kicker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+      color: var(--accent-deep);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .kicker::after {
+      content: "";
+      width: 46px;
+      height: 1px;
+      background: currentColor;
+      opacity: 0.45;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 5.5vw, 68px);
+      font-weight: 800;
+      line-height: 1.06;
+      letter-spacing: -0.045em;
+    }
+
+    h1 .accent {
+      position: relative;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    h1 .accent::after {
+      content: "";
+      position: absolute;
+      left: 2%;
+      right: 1%;
+      bottom: 0.04em;
+      height: 0.16em;
+      border-radius: 999px;
+      background: var(--accent);
+      opacity: 0.17;
+      transform: rotate(-1.2deg);
+    }
+
+    .lede {
+      max-width: 610px;
+      margin: 22px 0 0;
+      color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .workspace {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(20px, 3vw, 34px);
+      border: 1px solid rgba(200, 191, 174, 0.7);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      animation: rise-in 0.7s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .workspace::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent) 0 18%, var(--ink) 18% 22%, transparent 22%);
+    }
+
+    .workspace-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding-top: 4px;
+    }
+
+    .step-label {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+
+    .status[data-state="working"] { color: var(--accent-deep); }
+    .status[data-state="working"]::before { animation: blink 1s ease-in-out infinite; }
+    .status[data-state="done"] { color: var(--green); }
+    .status[data-state="error"] { color: var(--red); }
+
+    .dropzone {
+      position: relative;
+      display: flex;
+      min-height: 318px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 38px 24px;
+      border: 1.5px dashed var(--line-dark);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(255, 248, 239, 0.5)),
+        repeating-linear-gradient(0deg, transparent 0 27px, rgba(24, 22, 17, 0.027) 27px 28px);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+    }
+
+    .dropzone:hover,
+    .dropzone:focus-visible,
+    .dropzone.is-dragging {
+      border-color: var(--accent);
+      background-color: var(--accent-wash);
+      outline: none;
+    }
+
+    .dropzone.is-dragging { transform: scale(0.995); }
+
+    .drop-art {
+      position: relative;
+      display: grid;
+      width: 74px;
+      height: 74px;
+      margin-bottom: 22px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      color: var(--accent);
+      background: var(--card);
+      box-shadow: 0 10px 24px rgba(45, 37, 20, 0.08);
+    }
+
+    .drop-art::before,
+    .drop-art::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .drop-art::before {
+      top: -4px;
+      right: -4px;
+      width: 9px;
+      height: 9px;
+      box-shadow: 0 0 0 5px var(--accent-wash);
+    }
+
+    .drop-art::after {
+      bottom: 11px;
+      left: 11px;
+      width: 5px;
+      height: 5px;
+      opacity: 0.35;
+    }
+
+    .drop-art svg { width: 34px; height: 34px; }
+
+    .dropzone h2 {
+      margin: 0;
+      font-size: clamp(18px, 2.2vw, 22px);
+      font-weight: 750;
+      letter-spacing: -0.025em;
+    }
+
+    .dropzone p {
+      margin: 9px 0 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .btn {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 19px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:focus-visible {
+      outline: 3px solid rgba(237, 90, 43, 0.24);
+      outline-offset: 2px;
+    }
+
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.55; }
+
+    .btn-primary {
+      color: #fff;
+      background: var(--ink);
+      box-shadow: 0 8px 20px rgba(24, 22, 17, 0.16);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #302b22;
+      box-shadow: 0 10px 24px rgba(24, 22, 17, 0.2);
+    }
+
+    .btn-accent {
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 8px 20px rgba(237, 90, 43, 0.22);
+    }
+
+    .btn-accent:hover:not(:disabled) { background: var(--accent-deep); }
+
+    .btn-ghost {
+      border-color: var(--line);
+      background: transparent;
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      border-color: var(--line-dark);
+      background: #f7f2e8;
+    }
+
+    .btn svg { width: 16px; height: 16px; }
+
+    .privacy {
+      max-width: 760px;
+      margin: 18px auto 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .file-chip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: #fbf8f0;
+    }
+
+    .file-chip + .file-chip { margin-top: 12px; }
+
+    .thumb {
+      width: 58px;
+      height: 48px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background:
+        linear-gradient(45deg, #eee8dc 25%, transparent 25%, transparent 75%, #eee8dc 75%),
+        linear-gradient(45deg, #eee8dc 25%, #fff 25%, #fff 75%, #eee8dc 75%);
+      background-position: 0 0, 5px 5px;
+      background-size: 10px 10px;
+    }
+
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .file-info {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .file-name {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-meta {
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .text-btn {
+      flex: 0 0 auto;
+      padding: 7px 5px;
+      border: 0;
+      color: var(--ink-soft);
+      background: transparent;
+      font-size: 12.5px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-decoration-color: var(--line-dark);
+      text-underline-offset: 4px;
+      cursor: pointer;
+    }
+
+    .text-btn:hover { color: var(--accent-deep); }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 17px;
+      margin-top: 14px;
+      padding: 19px 20px;
+      border: 1px solid #f1c9b9;
+      border-radius: var(--radius-md);
+      background: linear-gradient(90deg, #fff5ef, #fffaf5 45%, #fff5ef);
+      background-size: 220% 100%;
+      animation: wash 2.8s linear infinite;
+    }
+
+    .spinner {
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
+      border: 2.5px solid rgba(237, 90, 43, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    .loading-copy { min-width: 0; }
+
+    .loading-title {
+      display: block;
+      color: var(--accent-deep);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .loading-note {
+      display: block;
+      margin-top: 4px;
+      color: #927c6f;
+      font-size: 12px;
+    }
+
+    .error-box {
+      display: flex;
+      gap: 13px;
+      margin-top: 14px;
+      padding: 16px 18px;
+      border: 1px solid #ecc6bd;
+      border-radius: var(--radius-md);
+      color: #702b20;
+      background: #fff5f2;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .error-box svg {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      margin-top: 1px;
+    }
+
+    .error-content { min-width: 0; flex: 1; }
+    .error-title { display: block; margin-bottom: 2px; font-weight: 800; }
+    .error-detail { display: block; margin-top: 4px; color: #98685f; font-family: var(--mono); font-size: 10.5px; word-break: break-word; }
+
+    .error-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+
+    .result {
+      margin-top: 22px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      animation: rise-in 0.4s ease both;
+    }
+
+    .result-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 13px;
+    }
+
+    .result-head h2 {
+      margin: 3px 0 0;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+    }
+
+    .elapsed {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+
+    .text-wrap {
+      position: relative;
+    }
+
+    #resultText {
+      display: block;
+      width: 100%;
+      min-height: 285px;
+      padding: 22px 23px 35px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      outline: none;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #fffefb, #fcf9f2);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.9;
+      letter-spacing: 0.005em;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    #resultText:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(237, 90, 43, 0.12);
+    }
+
+    .text-badge {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      padding: 3px 6px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.9);
+      font-family: var(--mono);
+      font-size: 9.5px;
+      letter-spacing: 0.08em;
+      pointer-events: none;
+    }
+
+    .result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .warning {
+      margin: 12px 0 0;
+      color: #8a641f;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .warning::before { content: "提示："; font-weight: 800; }
+
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 22px;
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .footer span:last-child { font-family: var(--mono); letter-spacing: 0.02em; }
+
+    [hidden] { display: none !important; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes blink {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes wash {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 720px) {
+      .page { width: min(100% - 24px, 1120px); padding-top: 18px; }
+      .topbar { margin-bottom: 38px; }
+      .top-meta { padding: 7px 10px; font-size: 10.5px; }
+      .hero { margin-bottom: 24px; }
+      h1 { font-size: clamp(35px, 10.5vw, 48px); }
+      .lede { margin-top: 16px; font-size: 14.5px; }
+      .workspace { border-radius: 22px; }
+      .dropzone { min-height: 278px; padding: 32px 18px; }
+      .drop-art { width: 64px; height: 64px; margin-bottom: 18px; }
+      .dropzone p { margin-bottom: 18px; }
+      .loading { align-items: flex-start; }
+      .result-head { align-items: flex-start; flex-direction: column; gap: 5px; }
+      #resultText { min-height: 255px; padding: 18px 17px 32px; font-size: 14.5px; }
+      .result-actions .btn { flex: 1; }
+      .footer { justify-content: center; text-align: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M4 20h16M6 20V9l6-4 6 4v11M9 20v-5h6v5"/>
+          </svg>
+        </span>
+        <span>工程计划识别</span>
+      </div>
+      <div class="top-meta">DeepSeek Vision</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="kicker">Site report / OCR</p>
+        <h1>截图里的工程计划，<br>整理成<span class="accent">可发送的文本。</span></h1>
+        <p class="lede">自动定位楼栋、今日计划、明日计划与紧邻的人员数量，按楼栋合并，输出干净、可直接复制的纯文本。</p>
+      </section>
+
+      <section class="workspace" aria-labelledby="workspaceTitle">
+        <div class="workspace-head">
+          <span class="step-label" id="workspaceTitle">01 / 上传表格截图</span>
+          <span class="status" id="statusText" data-state="idle" aria-live="polite">等待上传</span>
+        </div>
+
+        <div
+          class="dropzone"
+          id="dropzone"
+          role="button"
+          tabindex="0"
+          aria-label="拖入工程表格截图，或点击选择图片"
+        >
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+            hidden
+          >
+          <div class="drop-art" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+              <path d="M3 9h18M9 9v11M15 9v11M3 14.5h18"/>
+            </svg>
+          </div>
+          <h2>拖入或选择工程表格截图</h2>
+          <p>支持 JPG、PNG、WebP、GIF，单张不超过 20 MB</p>
+          <button class="btn btn-primary" id="chooseBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
+            </svg>
+            选择图片
+          </button>
+        </div>
+
+        <div id="fileChip" class="file-chip" hidden>
+          <div class="thumb">
+            <img id="previewImg" alt="已选择图片的预览">
+          </div>
+          <div class="file-info">
+            <span class="file-name" id="fileName"></span>
+            <span class="file-meta" id="fileMeta"></span>
+          </div>
+          <button class="text-btn" id="changeBtn" type="button">更换图片</button>
+        </div>
+
+        <div id="loadingBox" class="loading" hidden aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="loading-copy">
+            <span class="loading-title">正在识别...</span>
+            <span class="loading-note">读取表头与人员数量，通常需要十几秒</span>
+          </span>
+        </div>
+
+        <div id="errorBox" class="error-box" hidden role="alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 7.5v5.5M12 16.5h.01"/>
+          </svg>
+          <div class="error-content">
+            <span class="error-title" id="errorTitle">识别失败</span>
+            <span id="errorMessage"></span>
+            <span class="error-detail" id="errorDetail" hidden></span>
+            <div class="error-actions">
+              <button class="btn btn-ghost" id="retryBtn" type="button">重试</button>
+              <button class="btn btn-ghost" id="errorChooseBtn" type="button">换一张图片</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="result" id="resultBox" hidden aria-labelledby="resultTitle">
+          <div class="result-head">
+            <div>
+              <span class="step-label">02 / 识别结果</span>
+              <h2 id="resultTitle">可直接复制使用</h2>
+            </div>
+            <span class="elapsed" id="elapsed"></span>
+          </div>
+          <div class="text-wrap">
+            <textarea id="resultText" readonly spellcheck="false" aria-label="识别结果纯文本"></textarea>
+            <span class="text-badge">TXT</span>
+          </div>
+          <div class="result-actions">
+            <button class="btn btn-accent" id="copyBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="12" rx="2"/>
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/>
+              </svg>
+              <span id="copyLabel">复制结果</span>
+            </button>
+            <button class="btn btn-ghost" id="againBtn" type="button">识别下一张</button>
+          </div>
+          <p class="warning" id="warningText" hidden></p>
+        </section>
+      </section>
+
+      <p class="privacy">图片由本机后端转发至 DeepSeek 官方 API；API Key 只保存在服务端，不会出现在网页或浏览器中。</p>
+    </main>
+
+    <footer class="footer">
+      <span>按楼栋合并 · 今日 / 明日分别统计 · 纯文本输出</span>
+      <span>127.0.0.1 / LOCAL</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // 双击打开 index.html 时，默认连接本机 5000 端口；由 Flask 提供页面时走同源。
+      const API_BASE = (window.API_BASE || (location.protocol === "file:" ? "http://127.0.0.1:5000" : "")).replace(/\/+$/, "");
+      const MAX_BYTES = 20 * 1024 * 1024;
+      const REQUEST_TIMEOUT_MS = 180000;
+
+      const $ = (id) => document.getElementById(id);
+      const dropzone = $("dropzone");
+      const fileInput = $("fileInput");
+      const chooseBtn = $("chooseBtn");
+      const changeBtn = $("changeBtn");
+      const errorChooseBtn = $("errorChooseBtn");
+      const retryBtn = $("retryBtn");
+      const againBtn = $("againBtn");
+      const copyBtn = $("copyBtn");
+      const copyLabel = $("copyLabel");
+      const fileChip = $("fileChip");
+      const previewImg = $("previewImg");
+      const fileName = $("fileName");
+      const fileMeta = $("fileMeta");
+      const loadingBox = $("loadingBox");
+      const errorBox = $("errorBox");
+      const errorTitle = $("errorTitle");
+      const errorMessage = $("errorMessage");
+      const errorDetail = $("errorDetail");
+      const resultBox = $("resultBox");
+      const resultText = $("resultText");
+      const elapsed = $("elapsed");
+      const warningText = $("warningText");
+      const statusText = $("statusText");
+
+      const state = {
+        file: null,
+        dataUrl: "",
+        previewUrl: "",
+        controller: null,
+        requestId: 0,
+        copiedTimer: null
+      };
+
+      function setStatus(text, kind) {
+        statusText.textContent = text;
+        statusText.dataset.state = kind;
+      }
+
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+        if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+
+      function isSupported(file) {
+        const types = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        return types.includes(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name || "");
+      }
+
+      function resetCopyButton() {
+        copyLabel.textContent = "复制结果";
+        copyBtn.disabled = false;
+        if (state.copiedTimer) {
+          clearTimeout(state.copiedTimer);
+          state.copiedTimer = null;
+        }
+      }
+
+      function clearPreviewUrl() {
+        if (state.previewUrl) {
+          URL.revokeObjectURL(state.previewUrl);
+          state.previewUrl = "";
+        }
+      }
+
+      function abortCurrent() {
+        if (state.controller) {
+          state.controller.abort();
+          state.controller = null;
+        }
+      }
+
+      function resetAll() {
+        abortCurrent();
+        state.requestId += 1;
+        state.file = null;
+        state.dataUrl = "";
+        clearPreviewUrl();
+        previewImg.removeAttribute("src");
+        fileInput.value = "";
+        resultText.value = "";
+        errorDetail.textContent = "";
+        errorDetail.hidden = true;
+        warningText.hidden = true;
+        warningText.textContent = "";
+        elapsed.textContent = "";
+        resetCopyButton();
+        loadingBox.hidden = true;
+        errorBox.hidden = true;
+        fileChip.hidden = true;
+        resultBox.hidden = true;
+        dropzone.hidden = false;
+        dropzone.classList.remove("is-dragging");
+        setStatus("等待上传", "idle");
+        chooseBtn.disabled = false;
+        changeBtn.disabled = false;
+        chooseBtn.focus({ preventScroll: true });
+      }
+
+      function showError(title, message, detail) {
+        const hasFile = Boolean(state.file || state.previewUrl);
+        loadingBox.hidden = true;
+        resultBox.hidden = true;
+        fileChip.hidden = !hasFile;
+        dropzone.hidden = hasFile;
+        errorBox.hidden = false;
+        errorTitle.textContent = title || "识别失败";
+        errorMessage.textContent = message || "请稍后重试。";
+        if (detail) {
+          errorDetail.textContent = detail;
+          errorDetail.hidden = false;
+        } else {
+          errorDetail.textContent = "";
+          errorDetail.hidden = true;
+        }
+        setStatus("识别失败", "error");
+        chooseBtn.disabled = false;
+        changeBtn.disabled = false;
+      }
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("读取图片失败，请重新选择。"));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleFile(file) {
+        if (!file) return;
+        if (!isSupported(file)) {
+          resetAll();
+          showError("图片格式不支持", "请上传 JPG、PNG、WebP 或 GIF 格式的截图。");
+          return;
+        }
+        if (file.size > MAX_BYTES) {
+          resetAll();
+          showError("图片过大", `当前图片 ${formatBytes(file.size)}，请压缩到 20 MB 以内再试。`);
+          return;
+        }
+
+        abortCurrent();
+        state.requestId += 1;
+        clearPreviewUrl();
+        state.file = file;
+        state.dataUrl = "";
+        state.previewUrl = URL.createObjectURL(file);
+
+        previewImg.src = state.previewUrl;
+        previewImg.alt = `${file.name} 的预览`;
+        fileName.textContent = file.name || "未命名图片";
+        fileMeta.textContent = `${formatBytes(file.size)} · 等待发送`;
+        errorBox.hidden = true;
+        resultBox.hidden = true;
+        warningText.hidden = true;
+        resetCopyButton();
+
+        dropzone.hidden = true;
+        fileChip.hidden = false;
+        loadingBox.hidden = false;
+        setStatus("正在识别", "working");
+        chooseBtn.disabled = true;
+        changeBtn.disabled = true;
+
+        try {
+          state.dataUrl = await fileToDataUrl(file);
+          fileMeta.textContent = `${formatBytes(file.size)} · 已读取，正在上传`;
+          await recognize(state.dataUrl);
+        } catch (error) {
+          if (error && error.name === "AbortError") return;
+          showError("识别失败", error && error.message ? error.message : "发生未知错误，请重试。");
+        }
+      }
+
+      async function recognize(dataUrl) {
+        abortCurrent();
+        const requestId = ++state.requestId;
+        const controller = new AbortController();
+        state.controller = controller;
+
+        errorBox.hidden = true;
+        resultBox.hidden = true;
+        loadingBox.hidden = false;
+        warningText.hidden = true;
+        setStatus("正在识别", "working");
+        changeBtn.disabled = true;
+        chooseBtn.disabled = true;
+
+        let timedOut = false;
+        const timeoutId = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(`${API_BASE}/api/recognize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: dataUrl }),
+            signal: controller.signal
+          });
+
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (_) {
+            throw new Error(`后端返回了无法解析的响应（HTTP ${response.status}）。`);
+          }
+
+          if (requestId !== state.requestId) return;
+
+          if (!response.ok || !data || data.ok !== true) {
+            const error = new Error((data && data.error) || `识别失败（HTTP ${response.status}）。`);
+            error.detail = data && data.detail ? data.detail : "";
+            throw error;
+          }
+
+          if (!data.text || !String(data.text).trim()) {
+            throw new Error("没有识别到有效内容，请更换更清晰的截图重试。");
+          }
+
+          finishSuccess(String(data.text), data);
+        } catch (error) {
+          if (requestId !== state.requestId) return;
+          if (error && error.name === "AbortError") {
+            if (timedOut) {
+              showError("请求超时", "识别用时过长，请检查网络后重试，或换一张更小的截图。");
+            }
+            return;
+          }
+          if (error instanceof TypeError) {
+            showError(
+              "无法连接后端",
+              "请确认 app.py 已在本机运行，并访问 http://127.0.0.1:5000 后重试。",
+              "若你双击打开 HTML，请先启动 Flask；若仍失败，请检查 5000 端口是否被占用。"
+            );
+            return;
+          }
+          showError("识别失败", error && error.message ? error.message : "请稍后重试。", error && error.detail ? error.detail : "");
+        } finally {
+          clearTimeout(timeoutId);
+          if (requestId === state.requestId) {
+            loadingBox.hidden = true;
+            changeBtn.disabled = false;
+            chooseBtn.disabled = false;
+            state.controller = null;
+          }
+        }
+      }
+
+      function finishSuccess(text, data) {
+        resultText.value = text;
+        if (data && Number.isFinite(Number(data.elapsed_ms))) {
+          const seconds = Math.max(0.1, Number(data.elapsed_ms) / 1000);
+          elapsed.textContent = `${seconds.toFixed(1)}s · ${data.report_date || ""}`;
+        } else {
+          elapsed.textContent = data && data.report_date ? data.report_date : "";
+        }
+
+        if (data && data.warning) {
+          warningText.textContent = data.warning;
+          warningText.hidden = false;
+        } else {
+          warningText.hidden = true;
+          warningText.textContent = "";
+        }
+
+        if (state.file) {
+          fileMeta.textContent = `${formatBytes(state.file.size)} · 识别完成`;
+        }
+        loadingBox.hidden = true;
+        errorBox.hidden = true;
+        dropzone.hidden = true;
+        fileChip.hidden = false;
+        resultBox.hidden = false;
+        setStatus("已完成", "done");
+        resetCopyButton();
+
+        resultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      async function copyResult() {
+        const text = resultText.value;
+        if (!text) return;
+
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            resultText.focus();
+            resultText.select();
+            const ok = document.execCommand("copy");
+            resultText.setSelectionRange(0, 0);
+            resultText.blur();
+            if (!ok) throw new Error("copy failed");
+          }
+          copyLabel.textContent = "已复制";
+          copyBtn.disabled = true;
+          if (state.copiedTimer) clearTimeout(state.copiedTimer);
+          state.copiedTimer = setTimeout(() => {
+            copyLabel.textContent = "复制结果";
+            copyBtn.disabled = false;
+            state.copiedTimer = null;
+          }, 1800);
+        } catch (_) {
+          copyLabel.textContent = "复制失败";
+          setTimeout(() => { copyLabel.textContent = "复制结果"; }, 1800);
+        }
+      }
+
+      function openPicker() {
+        fileInput.value = "";
+        fileInput.click();
+      }
+
+      chooseBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openPicker();
+      });
+
+      dropzone.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        openPicker();
+      });
+
+      dropzone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPicker();
+        }
+      });
+
+      ["dragenter", "dragover"].forEach((type) => {
+        dropzone.addEventListener(type, (event) => {
+          event.preventDefault();
+          dropzone.classList.add("is-dragging");
+        });
+      });
+
+      ["dragleave", "dragend"].forEach((type) => {
+        dropzone.addEventListener(type, (event) => {
+          event.preventDefault();
+          if (type === "dragleave" && dropzone.contains(event.relatedTarget)) return;
+          dropzone.classList.remove("is-dragging");
+        });
+      });
+
+      dropzone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("is-dragging");
+        const files = event.dataTransfer && event.dataTransfer.files;
+        if (files && files.length) handleFile(files[0]);
+      });
+
+      // 阻止在页面其他区域误放下图片时浏览器直接打开文件。
+      ["dragover", "drop"].forEach((type) => {
+        document.addEventListener(type, (event) => {
+          if (!dropzone.contains(event.target)) event.preventDefault();
+        });
+      });
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+      });
+
+      changeBtn.addEventListener("click", openPicker);
+      errorChooseBtn.addEventListener("click", openPicker);
+      againBtn.addEventListener("click", resetAll);
+      copyBtn.addEventListener("click", copyResult);
+
+      retryBtn.addEventListener("click", () => {
+        if (state.dataUrl) {
+          errorBox.hidden = true;
+          loadingBox.hidden = false;
+          setStatus("正在识别", "working");
+          recognize(state.dataUrl).catch((error) => {
+            showError("识别失败", error && error.message ? error.message : "请重试。");
+          });
+        } else if (state.file) {
+          handleFile(state.file);
+        } else {
+          openPicker();
+        }
+      });
+
+      window.addEventListener("beforeunload", () => {
+        abortCurrent();
+        clearPreviewUrl();
+      });
+
+      // 初次进入时自动聚焦上传区域，便于键盘操作。
+      window.addEventListener("load", () => {
+        dropzone.focus({ preventScroll: true });
+      });
+    })();
+  </script>
+</body>
+</html>
