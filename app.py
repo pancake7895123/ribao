@@ -13,10 +13,11 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import pytz
 import requests
 from flask import Flask, jsonify, request, send_from_directory
+from pytz.exceptions import UnknownTimeZoneError
 
 try:
     from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
@@ -25,6 +26,9 @@ except ImportError as exc:  # pragma: no cover - 仅在依赖缺失时触发
         "缺少 Pillow 依赖。请在项目目录执行："
         ".venv\\Scripts\\python.exe -m pip install -r requirements.txt"
     ) from exc
+
+# Pillow 9.0 没有 Image.Resampling，老版本 Python 环境使用 Image.LANCZOS。
+IMAGE_RESAMPLE = getattr(Image, "Resampling", Image).LANCZOS
 
 # Windows 默认控制台编码可能不是 UTF-8，会把调试用的中文打印成乱码。
 for _stream in (sys.stdout, sys.stderr):
@@ -205,16 +209,15 @@ def get_report_date() -> str:
 
     tz_name = os.getenv("REPORT_TIMEZONE", "Asia/Shanghai").strip() or "Asia/Shanghai"
     try:
-        tz = ZoneInfo(tz_name)
-    except ZoneInfoNotFoundError as exc:
-        # Windows 的 Python 通常不自带 IANA 时区库；requirements.txt 已包含
-        # tzdata，这里再为最常用的上海时区做一次兜底，避免没装 tzdata 时直接 500。
+        # pytz 兼容 Python 3.7/3.8，CloudBase 老版本基础镜像没有内置时区库。
+        tz = pytz.timezone(tz_name)
+    except UnknownTimeZoneError as exc:
         if tz_name in {"Asia/Shanghai", "PRC", "Etc/GMT-8"}:
-            log.warning("未找到时区数据库，Asia/Shanghai 暂按固定 UTC+8 处理。")
+            log.warning("pytz 未找到 Asia/Shanghai，暂按固定 UTC+8 处理。")
             tz = timezone(timedelta(hours=8))
         else:
             raise ConfigError(
-                f"REPORT_TIMEZONE 无效：{tz_name}。请执行 pip install tzdata，"
+                f"REPORT_TIMEZONE 无效：{tz_name}。请检查 pytz 时区名称，"
                 "或改用 Asia/Shanghai。"
             ) from exc
     return datetime.now(tz).strftime("%Y/%m/%d")
@@ -420,7 +423,7 @@ def _encode_prepared_image(image: Image.Image) -> tuple[bytes, str, tuple[int, i
         scale = 8192 / max(image.size)
         image = image.resize(
             (max(1, int(image.width * scale)), max(1, int(image.height * scale))),
-            Image.Resampling.LANCZOS,
+            IMAGE_RESAMPLE,
         )
 
     # 轻微锐化有助于区分 9/3、8/3 这类容易混淆的数字，但不要过度。
@@ -454,7 +457,7 @@ def _encode_prepared_image(image: Image.Image) -> tuple[bytes, str, tuple[int, i
         scale = max(0.1, (IMAGE_TILE_MAX_BYTES / len(data)) ** 0.5 * 0.9)
         image = image.resize(
             (max(1, int(image.width * scale)), max(1, int(image.height * scale))),
-            Image.Resampling.LANCZOS,
+            IMAGE_RESAMPLE,
         )
         buffer = BytesIO()
         image.save(
