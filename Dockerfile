@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM docker.xuanyuan.me/library/python:3.10-slim
 
 # 固定容器时区为 Asia/Shanghai
 ENV TZ=Asia/Shanghai \
