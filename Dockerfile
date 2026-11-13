@@ -1,22 +1,18 @@
-# 使用腾讯云官方文档推荐的 alpine 镜像
-FROM alpine:3.13
+FROM docker.1ms.run/library/python:3.10-slim
 
-# 安装 Python 和 pip，并设置时区为上海
-RUN apk add --no-cache python3 py3-pip tzdata && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone
+# 设置时区为上海
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 设置工作目录
 WORKDIR /app
 
-# 复制代码并安装依赖（使用腾讯云内网 pip 源加速）
-COPY . .
-RUN pip config set global.index-url http://mirrors.cloud.tencent.com/pypi/simple && \
-    pip config set global.trusted-host mirrors.cloud.tencent.com && \
-    pip install --no-cache-dir -r requirements.txt
+# 复制依赖文件并使用清华源加速安装（防止网络卡顿）
+COPY requirements.txt .
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
-# 暴露端口
+# 复制应用代码
+COPY app.py index.html ./
+
+# 暴露端口并启动
 EXPOSE 8080
-
-# 启动命令
-CMD exec gunicorn --bind :8080 --workers 1 --threads 4 --timeout 60 app:app
+CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "4", "--timeout", "60", "app:app"]
