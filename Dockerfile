@@ -1,4 +1,4 @@
-FROM docker.1ms.run/library/python:3.10-slim
+FROM docker.xuanyuan.me/library/python:3.10-slim
 
 # 设置时区为上海
 ENV TZ=Asia/Shanghai
