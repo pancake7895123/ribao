@@ -1,5 +1,4 @@
-# 使用腾讯云文档推荐的 alpine 基础镜像
-FROM alpine
+FROM docker.1ms.run/library/alpine:latest
 
 # 安装 Python 和 pip，并设置时区为上海
 RUN apk add --no-cache python3 py3-pip tzdata && \
