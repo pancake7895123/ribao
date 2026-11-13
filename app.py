@@ -286,8 +286,10 @@ def build_user_prompt(report_date: str, image_count: int = 1) -> str:
 1. 同一楼栋的多行计划仍合并为一条输出，但每一行表格的“任务内容”必须和“该行的人员数量”成对出现。
 2. 固定顺序为：
 楼栋，第1行任务，第1行人员数量，第2行任务，第2行人员数量，第3行任务，第3行人员数量，……
+   - 人员数量有内容时才写；人员数量为空或“/”时，只写任务，直接省略该人员数量段。
 3. 正确示例：
 `1号楼，任务A，2人，任务B，6人，任务C，2人`
+`高效沉淀池，工艺设备安装准备`（该行人员数量为“/”，被省略）
 4. 严格禁止的错误输出（必须避免）：
 `1号楼，任务A，任务B，任务C，2人，6人，2人`
    - 禁止先把所有任务写完，再把所有人员数量堆到最后；
@@ -303,8 +305,13 @@ def build_user_prompt(report_date: str, image_count: int = 1) -> str:
      * 例如：`4号楼，支模板，2人+1台挖机`
      * “一台260挖机”里的 260 是机械型号，不是 260 个人；“2人+1台挖机”不能改写成“3人”。
    - **不要跨行求和**：每个任务只配自己那一行的人员数量，不能把多行人数相加，也不能把人员数量统一放到楼栋末尾。
-   - 人员数量为空或“/”时，不猜测、不编造；如果该任务仍然有效，可在该任务后写“人数待核对”；如果任务也无效，就跳过该行。
-   - 只要单元格里有“挖机、装载机、台、辆、人”等任何可读内容，就绝不能写“人数待核对”。
+   - **人员数量为空、只有“/”、写“无”时：计划文本和人员数量必须独立判断。**
+     * 只要计划文本有字，就必须正常输出这条计划，只是末尾不要拼人员数量；
+     * 不要丢整行，不要写“/”，不要写“人数待核对”，不要用 0 或其他数字占位。
+     * 例如：某行楼栋是“高效沉淀池”，今日计划是“工艺设备安装准备”，今日人数是“/”，则输出：`高效沉淀池，工艺设备安装准备`
+     * 例如：某行楼栋是“反硝化滤池”，明日计划是“设备检查”，明日人数为空，则输出：`反硝化滤池，设备检查`
+   - 如果计划文本本身也是空、只有“/”或“无”，才跳过该行；绝不能因为人员数量为空而丢掉有文字的计划。
+   - 有人员数量时正常配对：`高效沉淀池，工艺设备安装准备，3人`。
 8. 清洗计划文本：
    - 去掉单元格内的换行、首尾空格、项目符号、计划前的序号以及末尾多余的逗号/分号；
    - 不要改写专业术语，不要补充图片中没有的内容。
@@ -342,11 +349,13 @@ def build_user_prompt(report_date: str, image_count: int = 1) -> str:
 1号楼，外墙抹灰，5人，支模板，3人，钢筋绑扎，4人
 2号楼，钢筋绑扎，一台260挖机
 3号楼，混凝土浇筑，2人+1台挖机
+高效沉淀池，工艺设备安装准备
 明日计划
 
 1号楼，内墙抹灰，4人，材料转运，2人，混凝土浇筑，3人
 2号楼，材料转运，装载机一台
 3号楼，材料转运，8人
+反硝化滤池，设备检查
 """
 
 
@@ -605,10 +614,25 @@ def _normalize_resource_tail(line: str) -> str:
     return "，".join(parts) if changed else line
 
 
+def _is_personnel_value(text: str) -> bool:
+    """判断单独一段是否明显是人员/机械数量，而不是计划文本。"""
+    value = text.strip()
+    if not value:
+        return True
+    if value in {"/", "／", "无", "无内容", "暂无", "空", "人数待核对"}:
+        return True
+    if re.fullmatch(r"\d+(?:[,，]\d+)*(?:人|名)?", value):
+        return True
+    if re.search(r"(?:\d+|一)(?:台|辆)", value):
+        return True
+    # 不再因为“设备/装载机”等单个词就判定为人数，避免误删合法计划文本。
+    return False
+
+
 def _clean_slash_placeholders(line: str) -> str:
     """删除斜杠/“无”这类占位段落，但保留“护栏/扶手”这种有意义的斜杠。"""
     line = line.replace("／", "/")
-    placeholders = {"/", "无", "无内容", "暂无", "空"}
+    placeholders = {"/", "无", "无内容", "暂无", "空", "人数待核对"}
     parts = []
     for raw_part in line.split("，"):
         part = raw_part.strip()
@@ -647,12 +671,18 @@ def _clean_body(body: str, report_date: str) -> str:
         line = re.sub(r"[\s，,；;、]+$", "", line).strip()
         line = _clean_slash_placeholders(line)
 
-        # 去掉斜杠/空值后只剩“楼栋”或“楼栋+人数”的不完整行。
-        # 它们没有任务内容，不能作为有效楼栋条目输出。
-        if line != "未识别到有效数据" and line.count("，") < 2:
-            if line:
-                _debug_print(f"[Clean] 丢弃不完整或全占位符行：{line!r}")
-            continue
+        # 计划文本和人员数量必须独立判断：
+        # - “楼栋，任务”必须保留（该行人数为空或斜杠，只省略人数）；
+        # - “楼栋，2人”这种只有人数、没有任务的残缺行才丢弃。
+        if line != "未识别到有效数据":
+            parts = [part.strip() for part in line.split("，") if part.strip()]
+            if len(parts) < 2:
+                if line:
+                    _debug_print(f"[Clean] 丢弃无任务内容的行：{line!r}")
+                continue
+            if len(parts) == 2 and _is_personnel_value(parts[1]):
+                _debug_print(f"[Clean] 丢弃只有人数、没有任务的行：{line!r}")
+                continue
 
         line = _normalize_resource_tail(line)
         if line and line != report_date:
@@ -695,11 +725,11 @@ def normalize_model_output(raw: str, report_date: str) -> tuple[str, bool]:
     tomorrow_body = _clean_body(tomorrow_body_raw, report_date)
 
     lines = [line for line in (today_body + "\n" + tomorrow_body).splitlines() if line]
-    # 末尾允许“12人”“一台260挖机”“2人+1台挖机”“8人；装载机一台”等
-    # 任意非空内容，不再强制要求“数字+人”。
+    # 人员数量可以省略，因此“楼栋，任务”这种只有一个逗号的行也是合法的。
+    # 末尾允许“12人”“一台260挖机”“2人+1台挖机”等任意非空内容。
     line_ok = all(
         line == "未识别到有效数据"
-        or re.fullmatch(r".+，.+，.+", line)
+        or re.fullmatch(r".+，.+", line)
         for line in lines
     )
 

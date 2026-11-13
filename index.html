@@ -794,8 +794,8 @@
     (() => {
       "use strict";
 
-      // 双击打开 index.html 时，默认连接本机 5000 端口；由 Flask 提供页面时走同源。
-      const API_BASE = (window.API_BASE || (location.protocol === "file:" ? "http://127.0.0.1:5000" : "")).replace(/\/+$/, "");
+      // 双击打开 index.html 时，默认连接本机 8080 端口；由 Flask 提供页面时走同源。
+      const API_BASE = (window.API_BASE || (location.protocol === "file:" ? "http://127.0.0.1:8080" : "")).replace(/\/+$/, "");
       const MAX_BYTES = 20 * 1024 * 1024;
       const REQUEST_TIMEOUT_MS = 180000;
 
