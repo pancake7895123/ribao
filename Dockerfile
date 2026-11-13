@@ -1,4 +1,4 @@
-FROM ccr.ccs.tencentyun.com/library/python:3.12-slim
+FROM python:3.10-slim
 
 # 固定容器时区为 Asia/Shanghai
 ENV TZ=Asia/Shanghai \
